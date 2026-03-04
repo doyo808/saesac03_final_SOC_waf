@@ -8,5 +8,3 @@ services:
     environment:
       - BACKEND=http://192.168.40.10:80
       - PARANOIA=1
-    volumes:
-      - ./rules/custom_rules.conf:/etc/nginx/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
