@@ -8,8 +8,5 @@ services:
     environment:
       - BACKEND=http://192.168.40.10:80
       - PARANOIA=1
-    # Disabled temporarily to avoid startup failure:
-    # 90-copy-modsecurity-config.sh: cannot copy to /etc/modsecurity.d
-    # volumes:
-    #   - ./config/modsecurity.conf:/etc/modsecurity.d/modsecurity.conf
-    #   - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf
+    volumes:
+      - ../runtime/modsecurity.d:/etc/modsecurity.d
