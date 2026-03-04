@@ -1,0 +1,35 @@
+name: Nginx Reload
+
+on:
+  push:
+    branches:
+      - waf
+    paths:
+      - "waf/**"
+      - ".github/workflows/nginx-reload.yml"
+  workflow_dispatch:
+
+jobs:
+  reload:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate nginx config
+        shell: bash
+        run: |
+          if command -v sudo >/dev/null 2>&1; then
+            sudo nginx -t
+          else
+            nginx -t
+          fi
+
+      - name: Reload nginx
+        shell: bash
+        run: |
+          if command -v sudo >/dev/null 2>&1; then
+            sudo nginx -s reload
+          else
+            nginx -s reload
+          fi
