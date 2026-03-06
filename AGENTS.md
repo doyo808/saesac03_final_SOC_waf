@@ -15,6 +15,11 @@
 - Prefer cmd-safe commands: dir, type, findstr, copy, move, del.
 - If advanced search is needed, use rg when available.
 
+## Command Reliability Lessons
+- Avoid chaining commands with operator symbols in one call. Run critical git commands separately.
+- For git commit in this environment, prefer message format without spaces, for example: -m docs-update-agentsmd.
+- After each critical step add, commit, push, verify with git status or git log.
+
 ## Change Principles
 - Keep changes minimal and production-safe.
 - Prefer explicit, reversible edits.
