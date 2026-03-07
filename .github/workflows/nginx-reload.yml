@@ -1,12 +1,12 @@
-name: Nginx Reload Prod
+name: Nginx Reload
 
 on:
+  push:
+    branches:
+      - waf
+    paths:
+      - "waf/**"
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: "Type DEPLOY to run production deploy"
-        required: true
-        default: ""
 
 jobs:
   reload:
@@ -18,15 +18,6 @@ jobs:
       LIVE_WAF_DIR: /waf/saesac03_final_SOC/waf
       BRANCH: waf
     steps:
-      - name: Confirm production deploy token
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]; then
-            echo "Invalid confirm value. Type DEPLOY to run production deploy."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
