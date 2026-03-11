@@ -22,4 +22,6 @@
 - Test path: /soc-log-test 
 - Test header: X-SOC-Test: CHANGE_ME_SECRET 
 - Example command: 
-  python3 waf/scripts/generate_soc_test_traffic.py --secret CHANGE_ME_SECRET --url http://127.0.0.1/soc-log-test --interval 0.5
+  python3 soc_test_generator.py \
+  --url http://127.0.0.1/soc-log-test \
+  --secret CHANGE_ME_SECRET
