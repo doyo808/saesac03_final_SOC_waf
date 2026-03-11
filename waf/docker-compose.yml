@@ -9,4 +9,5 @@ services:
       - BACKEND=http://192.168.40.10:80
       - PARANOIA=1
     volumes:
-      - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf
+      - ./config/modsecurity.conf:/etc/modsecurity.d/modsecurity.conf:ro
+      - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro

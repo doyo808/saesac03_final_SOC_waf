@@ -38,3 +38,23 @@ On `git push` to `waf` branch with changes under `waf/**`, workflow does:
 3. `docker-compose up -d` (or `docker compose up -d`)
 4. `docker exec waf nginx -t`
 5. `docker exec waf nginx -s reload` (fallback: `kill -HUP 1`)
+
+## SOC test traffic policy (DetectionOnly)
+
+Use scoped test traffic so SOC logs are generated continuously without weakening production blocking.
+
+1. Keep global blocking mode enabled: `SecRuleEngine On`.
+2. Match all three test conditions in `waf/rules/custom_rules.conf`:
+   - Fixed tester source IP (`REMOTE_ADDR`)
+   - Dedicated header (`X-SOC-Test`)
+   - Dedicated path (`/soc-log-test`)
+3. Apply only to matched traffic: `ctl:ruleEngine=DetectionOnly`, `ctl:auditEngine=On`.
+4. Keep firewall/pfSense exceptions narrow: one approved tester host, WAF ports 80/443 only.
+5. Before deployment, replace placeholders: tester IP `192.168.10.50`, header secret `CHANGE_ME_SECRET`.
+
+### Verification checklist
+
+1. Push to `waf` branch and confirm workflow success.
+2. Send repetitive requests from the tester host with path `/soc-log-test` and header `X-SOC-Test`.
+3. Confirm WAF audit logs are created while ModSecurity does not block matched test traffic.
+4. Confirm non-test traffic still uses normal blocking behavior.
