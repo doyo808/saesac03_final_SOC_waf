@@ -58,3 +58,12 @@ Use scoped test traffic so SOC logs are generated continuously without weakening
 2. Send repetitive requests from the tester host with path `/soc-log-test` and header `X-SOC-Test`.
 3. Confirm WAF audit logs are created while ModSecurity does not block matched test traffic.
 4. Confirm non-test traffic still uses normal blocking behavior.
+
+## SOC test log generator script
+
+Script path: `waf/scripts/generate_soc_test_traffic.py`
+
+Example:
+`python3 waf/scripts/generate_soc_test_traffic.py --secret CHANGE_ME_SECRET --url http://127.0.0.1/soc-log-test --interval 0.5`
+
+Notes: set `--fixed-ip` if you need a constant X-Forwarded-For value; omit it to randomize per request.
