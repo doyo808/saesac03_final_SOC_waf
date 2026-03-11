@@ -37,25 +37,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if command -v docker-compose >/dev/null 2>&1; then
-            COMPOSE_CMD="docker-compose"
-          elif docker compose version >/dev/null 2>&1; then
-            COMPOSE_CMD="docker compose"
-          else
-            echo "Neither docker-compose nor docker compose is available"
+          if ! command -v docker-compose >/dev/null 2>&1; then
+            echo "docker-compose is required in this environment"
             exit 1
           fi
+          COMPOSE_CMD="docker-compose"
 
           cd "${LIVE_WAF_DIR}"
           if docker info >/dev/null 2>&1; then
-            ${COMPOSE_CMD} up -d
+            if ! ${COMPOSE_CMD} up -d; then
+              echo "compose up failed, recreating waf container once"
+              docker rm -f waf || true
+              ${COMPOSE_CMD} up -d --force-recreate
+            fi
           elif command -v sudo >/dev/null 2>&1; then
-            sudo ${COMPOSE_CMD} up -d
+            if ! sudo ${COMPOSE_CMD} up -d; then
+              echo "compose up failed, recreating waf container once"
+              sudo docker rm -f waf || true
+              sudo ${COMPOSE_CMD} up -d --force-recreate
+            fi
           else
             echo "Docker permission denied and sudo unavailable"
             exit 1
           fi
-
       - name: Validate nginx config in container
         shell: bash
         run: |

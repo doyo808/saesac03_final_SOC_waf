@@ -35,7 +35,7 @@ On `git push` to `waf` branch with changes under `waf/**`, workflow does:
 
 1. `git fetch origin waf`
 2. `git reset --hard origin/waf` in `/waf/saesac03_final_SOC`
-3. `docker-compose up -d` (or `docker compose up -d`)
+3. `docker-compose up -d`
 4. `docker exec waf nginx -t`
 5. `docker exec waf nginx -s reload` (fallback: `kill -HUP 1`)
 
@@ -75,6 +75,6 @@ Notes: set `--fixed-ip` if you need a constant X-Forwarded-For value; omit it to
 - Duplicate prevention: `access_log off;` is set before `access_log /var/log/nginx/access.log soc_json;` 
  
 Apply sequence: 
-1. `docker compose up -d` or `docker-compose up -d` 
+1. `docker-compose up -d` 
 2. `docker exec waf nginx -t` 
 3. `docker exec waf nginx -s reload`
