@@ -67,3 +67,14 @@ Example:
 `python3 waf/scripts/generate_soc_test_traffic.py --secret CHANGE_ME_SECRET --url http://127.0.0.1/soc-log-test --interval 0.5`
 
 Notes: set `--fixed-ip` if you need a constant X-Forwarded-For value; omit it to randomize per request.
+ 
+## Nginx JSON access log persistence 
+ 
+- Managed file: `waf/config/99-soc-json-log.conf` 
+- Compose mount: `./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro` 
+- Duplicate prevention: `access_log off;` is set before `access_log /var/log/nginx/access.log soc_json;` 
+ 
+Apply sequence: 
+1. `docker compose up -d` or `docker-compose up -d` 
+2. `docker exec waf nginx -t` 
+3. `docker exec waf nginx -s reload`

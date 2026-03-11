@@ -10,4 +10,5 @@ services:
       - PARANOIA=1
     volumes:
       - ./config/modsecurity.conf:/etc/modsecurity.d/modsecurity.conf:ro
+      - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
