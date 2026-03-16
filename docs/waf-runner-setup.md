@@ -78,8 +78,3 @@ Apply sequence:
 1. `docker-compose up -d` 
 2. `docker exec waf nginx -t` 
 3. `docker exec waf nginx -s reload`
-
-## API method exception policy
-- PUT/DELETE is allowed only for board and comment APIs.
-- Scope: /api/posts (and subpaths), /api/comments (and subpaths), and /api/v{n}/... variants.
-- ModSecurity ids: 990130, 990131 (method enforcement exception via ctl:ruleRemoveById=911100).
