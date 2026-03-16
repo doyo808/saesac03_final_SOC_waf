@@ -78,3 +78,8 @@ Apply sequence:
 1. `docker-compose up -d` 
 2. `docker exec waf nginx -t` 
 3. `docker exec waf nginx -s reload`
+
+## Board API method exception scope
+- PUT/DELETE allowed only for /api/board/posts/[id] and /api/board/posts/[postId]/comments/[commentId].
+- OPTIONS allowed only for /api/board/posts/* (preflight).
+- Applied Rule IDs: 990130, 990131, 990132 (path+method scoped 911100 exception).
