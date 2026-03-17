@@ -9,6 +9,18 @@ This repository uses a self-hosted GitHub Actions runner to deploy WAF changes o
 
 The workflow resets the live repository to `origin/waf` and applies `docker-compose up -d`.
 
+## ModSecurity runtime settings
+
+For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
+
+- `MODSEC_RULE_ENGINE=On`
+- `MODSEC_REQ_BODY_ACCESS=On`
+- `MODSEC_RESP_BODY_ACCESS=Off`
+- `MODSEC_AUDIT_ENGINE=RelevantOnly`
+- `MODSEC_AUDIT_LOG_FORMAT=JSON`
+
+Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
+
 ## Runner requirements
 
 1. Runner must be installed on the same server that runs Docker WAF.

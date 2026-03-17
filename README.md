@@ -7,7 +7,7 @@
  
 ## Repository Structure 
 - waf/docker-compose.yml : WAF service definition. 
-- waf/config/modsecurity.conf : global ModSecurity settings. 
+- waf/config/modsecurity.conf : reference ModSecurity settings kept for parity with compose env values. 
 - waf/rules/custom_rules.conf : custom WAF rules. 
 - .github/workflows/nginx-reload.yml : deploy and reload workflow. 
 - waf/scripts/generate_soc_test_traffic.py : SOC test log generator. 
@@ -17,6 +17,10 @@
 1. Push changes to the waf branch. 
 2. Workflow syncs /waf/saesac03_final_SOC on the WAF server. 
 3. Workflow runs compose up, nginx config test, and nginx reload. 
+
+## Runtime Notes
+- `owasp/modsecurity-crs:nginx` runtime settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
+- Do not bind-mount `waf/config/modsecurity.conf` into the container; this previously caused restart-loop issues in this project.
  
 ## SOC Log Test 
 - Test path: /soc-log-test 

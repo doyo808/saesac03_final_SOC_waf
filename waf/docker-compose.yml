@@ -8,7 +8,11 @@ services:
     environment:
       - BACKEND=http://192.168.40.10:80
       - PARANOIA=1
+      - MODSEC_RULE_ENGINE=On
+      - MODSEC_REQ_BODY_ACCESS=On
+      - MODSEC_RESP_BODY_ACCESS=Off
+      - MODSEC_AUDIT_ENGINE=RelevantOnly
+      - MODSEC_AUDIT_LOG_FORMAT=JSON
     volumes:
-      - ./config/modsecurity.conf:/etc/modsecurity.d/modsecurity.conf:ro
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
