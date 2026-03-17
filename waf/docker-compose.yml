@@ -6,13 +6,13 @@ services:
     ports:
       - "80:8080"
     environment:
-      - BACKEND=http://192.168.40.10:80
-      - PARANOIA=1
-      - MODSEC_RULE_ENGINE=On
-      - MODSEC_REQ_BODY_ACCESS=On
-      - MODSEC_RESP_BODY_ACCESS=Off
-      - MODSEC_AUDIT_ENGINE=RelevantOnly
-      - MODSEC_AUDIT_LOG_FORMAT=JSON
+      - BACKEND=${BACKEND:-http://192.168.40.10:80}
+      - PARANOIA=${PARANOIA:-1}
+      - MODSEC_RULE_ENGINE=${MODSEC_RULE_ENGINE:-On}
+      - MODSEC_REQ_BODY_ACCESS=${MODSEC_REQ_BODY_ACCESS:-On}
+      - MODSEC_RESP_BODY_ACCESS=${MODSEC_RESP_BODY_ACCESS:-Off}
+      - MODSEC_AUDIT_ENGINE=${MODSEC_AUDIT_ENGINE:-RelevantOnly}
+      - MODSEC_AUDIT_LOG_FORMAT=${MODSEC_AUDIT_LOG_FORMAT:-JSON}
     volumes:
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro

@@ -21,6 +21,11 @@
 ## Runtime Notes
 - `owasp/modsecurity-crs:nginx` runtime settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
 - Do not bind-mount `waf/config/modsecurity.conf` into the container; this previously caused restart-loop issues in this project.
+- Mode presets are stored in `waf/modes/block.env`, `waf/modes/detect.env`, and `waf/modes/off.env`.
+- From the `waf/` directory, switch modes with:
+  `docker-compose --env-file ./modes/block.env up -d`
+  `docker-compose --env-file ./modes/detect.env up -d`
+  `docker-compose --env-file ./modes/off.env up -d`
  
 ## SOC Log Test 
 - Test path: /soc-log-test 

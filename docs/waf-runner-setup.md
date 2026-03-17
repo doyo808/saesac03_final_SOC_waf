@@ -21,6 +21,28 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
+### Mode presets
+
+Preset files are stored under `waf/modes/`:
+
+- `block.env`: WAF blocking enabled
+- `detect.env`: DetectionOnly, log without blocking
+- `off.env`: ModSecurity engine off, reverse proxy only
+
+Run from `/waf/saesac03_final_SOC/waf`:
+
+`docker-compose --env-file ./modes/block.env up -d`
+
+`docker-compose --env-file ./modes/detect.env up -d`
+
+`docker-compose --env-file ./modes/off.env up -d`
+
+After mode changes, validate and reload:
+
+`docker exec waf nginx -t`
+
+`docker exec waf nginx -s reload`
+
 ## Runner requirements
 
 1. Runner must be installed on the same server that runs Docker WAF.
