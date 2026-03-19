@@ -5,6 +5,7 @@ on:
     branches:
       - waf
     paths:
+      - ".github/workflows/nginx-reload.yml"
       - "waf/**"
   workflow_dispatch:
 
@@ -37,28 +38,52 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v docker-compose >/dev/null 2>&1; then
-            echo "docker-compose is required in this environment"
-            exit 1
-          fi
-          COMPOSE_CMD="docker-compose"
 
-          cd "${LIVE_WAF_DIR}"
           if docker info >/dev/null 2>&1; then
-            if ! ${COMPOSE_CMD} up -d; then
-              echo "compose up failed, recreating waf container once"
-              docker rm -f waf || true
-              ${COMPOSE_CMD} up -d --force-recreate
-            fi
-          elif command -v sudo >/dev/null 2>&1; then
-            if ! sudo ${COMPOSE_CMD} up -d; then
-              echo "compose up failed, recreating waf container once"
-              sudo docker rm -f waf || true
-              sudo ${COMPOSE_CMD} up -d --force-recreate
-            fi
+            USE_SUDO=0
+          elif command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
+            USE_SUDO=1
           else
             echo "Docker permission denied and sudo unavailable"
             exit 1
+          fi
+
+          if [ "${USE_SUDO}" -eq 0 ] && docker compose version >/dev/null 2>&1; then
+            COMPOSE_KIND="plugin"
+          elif [ "${USE_SUDO}" -eq 1 ] && sudo docker compose version >/dev/null 2>&1; then
+            COMPOSE_KIND="plugin"
+          elif command -v docker-compose >/dev/null 2>&1; then
+            COMPOSE_KIND="legacy"
+          else
+            echo "Neither docker compose nor docker-compose is available"
+            exit 1
+          fi
+
+          run_compose() {
+            if [ "${COMPOSE_KIND}" = "plugin" ]; then
+              if [ "${USE_SUDO}" -eq 1 ]; then
+                sudo docker compose "$@"
+              else
+                docker compose "$@"
+              fi
+            else
+              if [ "${USE_SUDO}" -eq 1 ]; then
+                sudo docker-compose "$@"
+              else
+                docker-compose "$@"
+              fi
+            fi
+          }
+
+          cd "${LIVE_WAF_DIR}"
+          if ! run_compose up -d; then
+            echo "compose up failed, recreating waf container once"
+            if [ "${USE_SUDO}" -eq 1 ]; then
+              sudo docker rm -f waf || true
+            else
+              docker rm -f waf || true
+            fi
+            run_compose up -d --force-recreate
           fi
       - name: Validate nginx config in container
         shell: bash
@@ -66,7 +91,7 @@ jobs:
           set -euo pipefail
           if docker info >/dev/null 2>&1; then
             DOCKER_CMD="docker"
-          elif command -v sudo >/dev/null 2>&1; then
+          elif command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
             DOCKER_CMD="sudo docker"
           else
             echo "Docker permission denied and sudo unavailable"
@@ -80,7 +105,7 @@ jobs:
           set -euo pipefail
           if docker info >/dev/null 2>&1; then
             DOCKER_CMD="docker"
-          elif command -v sudo >/dev/null 2>&1; then
+          elif command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
             DOCKER_CMD="sudo docker"
           else
             echo "Docker permission denied and sudo unavailable"
@@ -96,8 +121,11 @@ jobs:
           set -euo pipefail
           if docker info >/dev/null 2>&1; then
             DOCKER_CMD="docker"
-          else
+          elif command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
             DOCKER_CMD="sudo docker"
+          else
+            echo "Docker permission denied and sudo unavailable"
+            exit 1
           fi
           ${DOCKER_CMD} ps
           ${DOCKER_CMD} logs --tail 30 waf
