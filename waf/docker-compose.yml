@@ -13,6 +13,9 @@ services:
       - MODSEC_RESP_BODY_ACCESS=${MODSEC_RESP_BODY_ACCESS:-Off}
       - MODSEC_AUDIT_ENGINE=${MODSEC_AUDIT_ENGINE:-RelevantOnly}
       - MODSEC_AUDIT_LOG_FORMAT=${MODSEC_AUDIT_LOG_FORMAT:-JSON}
+      - MODSEC_AUDIT_LOG_TYPE=${MODSEC_AUDIT_LOG_TYPE:-Serial}
+      - MODSEC_AUDIT_LOG_PARTS=${MODSEC_AUDIT_LOG_PARTS:-ABCFHZ}
+      - MODSEC_AUDIT_LOG_RELEVANT_STATUS=${MODSEC_AUDIT_LOG_RELEVANT_STATUS:-^(?:5|4(?!04))}
     volumes:
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
