@@ -17,10 +17,11 @@ services:
       - MODSEC_AUDIT_LOG_PARTS=${MODSEC_AUDIT_LOG_PARTS:-ABCFHZ}
       - MODSEC_AUDIT_LOG_RELEVANT_STATUS=${MODSEC_AUDIT_LOG_RELEVANT_STATUS:-^(?:5|4(?!04))}
     volumes:
+      # 1. 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
       
-      # [V] 핵심: BEFORE-CRS 파일을 엔진 설정 파일(crs-setup.conf) 위치에 덮어씌워 1순위로 만듭니다.
-      - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/crs-setup.conf:ro
+      # 2. [수정됨] Exclusion 규칙을 전용 폴더에 위치시킴 (이름순으로 로드됨)
+      - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:ro
       
-      # 커스텀 룰은 그대로 유지 (기타 SOC 테스트용)
+      # 3. 커스텀 룰 유지
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
