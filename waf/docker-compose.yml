@@ -16,12 +16,10 @@ services:
       - MODSEC_AUDIT_LOG_TYPE=${MODSEC_AUDIT_LOG_TYPE:-Serial}
       - MODSEC_AUDIT_LOG_PARTS=${MODSEC_AUDIT_LOG_PARTS:-ABCFHZ}
       - MODSEC_AUDIT_LOG_RELEVANT_STATUS=${MODSEC_AUDIT_LOG_RELEVANT_STATUS:-^(?:5|4(?!04))}
+      # [핵심] 920350(숫자 IP 접속 체크) 규칙을 엔진 로드 시점에 완전히 제외합니다.
+      - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # 1. Nginx 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      
-      # 2. [핵심] CRS 규칙 시작 전(Before)에 읽히는 공식 경로로 마운트
+      # CRS 규칙 시작 전(Before)에 읽히는 공식 경로
       - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf:ro
-      
-      # 3. 기타 커스텀 규칙
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
