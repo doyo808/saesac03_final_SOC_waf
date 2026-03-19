@@ -8,18 +8,14 @@ services:
     environment:
       - BACKEND=${BACKEND:-http://192.168.40.10:80}
       - PARANOIA=${PARANOIA:-1}
-      - MODSEC_RULE_ENGINE=${MODSEC_RULE_ENGINE:-On}
-      - MODSEC_REQ_BODY_ACCESS=${MODSEC_REQ_BODY_ACCESS:-On}
-      - MODSEC_RESP_BODY_ACCESS=${MODSEC_RESP_BODY_ACCESS:-Off}
-      - MODSEC_AUDIT_ENGINE=${MODSEC_AUDIT_ENGINE:-RelevantOnly}
-      - MODSEC_AUDIT_LOG_FORMAT=${MODSEC_AUDIT_LOG_FORMAT:-JSON}
-      - MODSEC_AUDIT_LOG_TYPE=${MODSEC_AUDIT_LOG_TYPE:-Serial}
-      - MODSEC_AUDIT_LOG_PARTS=${MODSEC_AUDIT_LOG_PARTS:-ABCFHZ}
-      - MODSEC_AUDIT_LOG_RELEVANT_STATUS=${MODSEC_AUDIT_LOG_RELEVANT_STATUS:-^(?:5|4(?!04))}
-      # [핵심] 920350(숫자 IP 접속 체크) 규칙을 엔진 로드 시점에 완전히 제외합니다.
+      - MODSEC_RULE_ENGINE=On
+      - MODSEC_AUDIT_ENGINE=RelevantOnly
+      # [핵심] 920350 규칙을 엔진 로드 시점에 완전히 제거
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
+      # Nginx 로그 설정 (Access Log 차단용)
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      # CRS 규칙 시작 전(Before)에 읽히는 공식 경로
+      # WAF 예외 규칙 (Audit Log 차단용)
       - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf:ro
+      # 커스텀 규칙 유지
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
