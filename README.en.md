@@ -11,7 +11,8 @@
 - `waf/docker-compose.yml`: WAF service definition and runtime environment values.
 - `waf/config/modsecurity.conf`: reference ModSecurity settings kept for parity with the compose environment.
 - `waf/config/99-soc-json-log.conf`: JSON access log configuration.
-- `waf/rules/custom_rules.conf`: custom WAF rules and scoped rule exceptions.
+- `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`: runtime exclusions and pre-CRS overrides.
+- `waf/rules/custom_rules.conf`: custom WAF detection rules and site-specific logging rules.
 - `.github/workflows/nginx-reload.yml`: live deployment and reload workflow.
 - `waf/scripts/generate_soc_test_traffic.py`: SOC test traffic generator.
 - `docs/waf-runner-setup.md`: runner and deployment setup guide.
@@ -40,13 +41,14 @@
 
 - Runtime ModSecurity settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
 - Do not bind-mount `waf/config/modsecurity.conf` into the live container. This image family is tuned through environment variables and mounted rule files.
+- Runtime exclusions that must execute before CRS now live in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`.
 - JSON access logging is provided by `waf/config/99-soc-json-log.conf`.
 - Board API method exceptions are limited to rule IDs `990130`, `990131`, and `990132`.
 
 ## SOC Test Traffic
 
 - Detection-only SOC traffic is scoped to `/soc-log-test` with header `X-SOC-Test: CHANGE_ME_SECRET`.
-- The current default rule also requires source IP `127.0.0.1` in `waf/rules/custom_rules.conf`.
+- The current default rule also requires source IP `127.0.0.1` in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`.
 - If you need a remote tester host instead of local loopback, update that IP before deployment.
 - Example traffic generator command:
 

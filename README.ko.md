@@ -11,7 +11,8 @@
 - `waf/docker-compose.yml`: WAF 서비스 정의와 런타임 환경 변수
 - `waf/config/modsecurity.conf`: compose 환경값과 기준을 맞추기 위한 참고용 ModSecurity 설정
 - `waf/config/99-soc-json-log.conf`: JSON 액세스 로그 설정
-- `waf/rules/custom_rules.conf`: 사용자 정의 WAF 규칙과 범위 제한 예외
+- `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`: CRS 전 실행이 필요한 런타임 예외와 전처리 규칙
+- `waf/rules/custom_rules.conf`: 사용자 정의 WAF 탐지 규칙과 사이트별 로깅 규칙
 - `.github/workflows/nginx-reload.yml`: 실서버 배포 및 reload 워크플로
 - `waf/scripts/generate_soc_test_traffic.py`: SOC 테스트 트래픽 생성 스크립트
 - `docs/waf-runner-setup.md`: runner 및 배포 설정 문서
@@ -40,13 +41,14 @@
 
 - ModSecurity 런타임 설정은 `waf/docker-compose.yml`의 `MODSEC_*` 환경 변수로 적용합니다.
 - `waf/config/modsecurity.conf`를 라이브 컨테이너에 직접 bind mount 하지 마세요. 이 이미지 계열은 환경 변수와 룰 파일 mount 방식에 맞춰져 있습니다.
+- CRS보다 먼저 실행되어야 하는 런타임 예외는 `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`에서 관리합니다.
 - JSON 액세스 로그는 `waf/config/99-soc-json-log.conf`로 관리합니다.
 - Board API 메서드 예외는 `990130`, `990131`, `990132` 규칙으로만 제한됩니다.
 
 ## SOC 테스트 트래픽
 
 - DetectionOnly 예외는 `/soc-log-test` 경로와 `X-SOC-Test: CHANGE_ME_SECRET` 헤더에만 적용됩니다.
-- 현재 기본 규칙은 `waf/rules/custom_rules.conf`에서 소스 IP `127.0.0.1`도 함께 요구합니다.
+- 현재 기본 규칙은 `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`에서 소스 IP `127.0.0.1`도 함께 요구합니다.
 - 로컬 루프백이 아닌 원격 테스트 호스트를 쓰려면 배포 전에 해당 IP를 규칙 파일에서 교체해야 합니다.
 - 예시 실행 명령:
 

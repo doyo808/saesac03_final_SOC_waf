@@ -18,4 +18,5 @@ services:
       - MODSEC_AUDIT_LOG_RELEVANT_STATUS=${MODSEC_AUDIT_LOG_RELEVANT_STATUS:-^(?:5|4(?!04))}
     volumes:
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
+      - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:ro
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro

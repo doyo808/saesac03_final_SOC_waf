@@ -21,6 +21,8 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
+Runtime exclusions and pre-CRS overrides should be managed in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`, mounted to `/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`.
+
 ### Mode presets
 
 Preset files are stored under `waf/modes/`:
@@ -80,13 +82,13 @@ On `git push` to `waf` branch with changes under `waf/**` or `.github/workflows/
 Use scoped test traffic so SOC logs are generated continuously without weakening production blocking.
 
 1. Keep global blocking mode enabled: `SecRuleEngine On`.
-2. Match all three test conditions in `waf/rules/custom_rules.conf`:
+2. Match all three test conditions in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`:
    - Default tester source IP `127.0.0.1` (`REMOTE_ADDR`)
    - Dedicated header `X-SOC-Test: CHANGE_ME_SECRET`
    - Dedicated path `/soc-log-test`
 3. Apply only to matched traffic: `ctl:ruleEngine=DetectionOnly`, `ctl:auditEngine=On`.
 4. Keep exceptions narrow: one approved tester host, WAF ports 80/443 only.
-5. If you need a remote tester instead of local loopback, replace the source IP in `waf/rules/custom_rules.conf` before deployment.
+5. If you need a remote tester instead of local loopback, replace the source IP in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` before deployment.
 
 ### Verification checklist
 
@@ -127,3 +129,4 @@ If the host only has the legacy standalone binary, replace `docker compose` with
 - PUT and DELETE are allowed only for `/api/board/posts/[id]` and `/api/board/posts/[postId]/comments/[commentId]`.
 - OPTIONS is allowed only for `/api/board/posts/*` preflight requests.
 - Applied rule IDs: `990130`, `990131`, `990132`.
+- These runtime exceptions are loaded from `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` so they run before CRS request-phase enforcement.
