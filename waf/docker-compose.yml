@@ -7,8 +7,8 @@ services:
       - "80:8080"
     environment:
       - BACKEND=${BACKEND:-http://192.168.40.10:80}
-      - PARANOIA=${PARANOIA:-1}
-      - MODSEC_RULE_ENGINE=On
+      - PARANOIA=${PARANOIA:-2}
+      - MODSEC_RULE_ENGINE=${MODSEC_RULE_ENGINE:-On}
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       # [핵심] 920350 규칙을 엔진 로드 시점에 완전히 제거
       - MODSEC_RULE_REMOVE_BY_ID=920350

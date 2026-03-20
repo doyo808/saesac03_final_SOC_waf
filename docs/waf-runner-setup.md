@@ -13,11 +13,14 @@ The workflow resets the live repository to `origin/waf` and applies `docker comp
 
 For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
 
-- `MODSEC_RULE_ENGINE=On`
+- `PARANOIA=2` by default
+- `MODSEC_RULE_ENGINE=On` by default
 - `MODSEC_REQ_BODY_ACCESS=On`
 - `MODSEC_RESP_BODY_ACCESS=Off`
 - `MODSEC_AUDIT_ENGINE=RelevantOnly`
 - `MODSEC_AUDIT_LOG_FORMAT=JSON`
+
+`waf/docker-compose.yml` now reads `PARANOIA` and `MODSEC_RULE_ENGINE` from environment variables, so `docker compose --env-file ./modes/<mode>.env up -d` applies the selected mode correctly. When no env file is supplied, the default runtime remains blocking mode with `PARANOIA=2`.
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
@@ -30,6 +33,8 @@ Preset files are stored under `waf/modes/`:
 - `block.env`: WAF blocking enabled
 - `detect.env`: DetectionOnly, log without blocking
 - `off.env`: ModSecurity engine off, reverse proxy only
+
+All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC_RULE_ENGINE` changes by mode.
 
 Run from `/waf/saesac03_final_SOC/waf`:
 
