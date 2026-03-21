@@ -24,7 +24,7 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
-Runtime exclusions and pre-CRS overrides should be managed in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`, mounted to `/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`.
+Runtime exclusions and pre-CRS overrides should be managed in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`, mounted to `/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf`.
 
 ### Mode presets
 
@@ -131,7 +131,16 @@ If the host only has the legacy standalone binary, replace `docker compose` with
 
 ## Board API method exception scope
 
+- Scope is limited to `Host: kj.ac.kr` so the CRS method policy stays unchanged for other virtual hosts.
 - PUT and DELETE are allowed only for `/api/board/posts/[id]` and `/api/board/posts/[postId]/comments/[commentId]`.
-- OPTIONS is allowed only for `/api/board/posts/*` preflight requests.
+- OPTIONS is kept explicit for `/api/board/posts/*` preflight requests.
 - Applied rule IDs: `990130`, `990131`, `990132`.
-- These runtime exceptions are loaded from `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` so they run before CRS request-phase enforcement.
+- These pre-CRS rules expand `tx.allowed_methods` for the scoped board paths, which prevents rule `911100` from raising anomaly score and avoids the follow-on `949110` 403 for normal board edit/delete traffic.
+
+### Board API verification checklist
+
+1. `PUT /api/board/posts/145` on `Host: kj.ac.kr` reaches the application and no longer logs rule `911100`.
+2. `DELETE /api/board/posts/145/comments/10` on `Host: kj.ac.kr` reaches the application and no longer logs rule `911100`.
+3. `OPTIONS` preflight requests for the same board paths succeed without WAF 403.
+4. `PUT` or `DELETE` to non-board paths still trigger CRS method enforcement.
+5. If a 403 remains after this change, review `942200` or other contributing rule hits in the same audit record as the next step.
