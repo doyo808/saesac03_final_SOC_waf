@@ -14,10 +14,9 @@ services:
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # 1. 로그 설정
+      # 1. Nginx 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
 
-      # 2. [최종 해결책] 규칙 폴더에 직접 꽂기
-      # CRS 이미지는 이 폴더(/rules/) 안에 있는 모든 .conf 파일을 자동으로 읽습니다.
-      # 파일명을 00_으로 시작하게 매핑하여 CRS보다 먼저 실행되게 만듭니다.
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro
+      # 2. [치트키] 메인 설정 파일이 우리 규칙을 읽도록 경로 강제 매핑
+      # 이 경로는 엔진이 부팅 시 가장 먼저, 무조건 읽는 위치입니다.
+      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/modsecurity-override.conf:ro
