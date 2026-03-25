@@ -26,6 +26,8 @@ Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecu
 
 Runtime exclusions and pre-CRS overrides should be managed in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`, mounted to `/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf`.
 
+Runtime action overrides that must stay aligned with operator expectations should be kept in `waf/rules/custom_rules.conf`, which is loaded with the CRS rules. This repository now overrides CRS DoS block rules `912120` and `912130` from silent `drop` to explicit `deny,status:403` so blocked requests return an HTTP response instead of surfacing as connection reset or timeout.
+
 ### Mode presets
 
 Preset files are stored under `waf/modes/`:
