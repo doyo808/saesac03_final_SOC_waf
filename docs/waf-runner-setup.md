@@ -26,6 +26,8 @@ Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecu
 
 Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts that repo file into the container as `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf`, which makes the load order explicit: local project rules first, then the stock CRS `REQUEST-901+` files.
 
+This file is now reserved for false-positive tuning and scoped pre-CRS exceptions only. It does not add project-specific phase 2 attack blocking rules; CRS remains the blocking layer after the local tuning rules run.
+
 Keep rule IDs unique across `waf/rules/00_custom_rules.conf` and any other local rule files. If the legacy `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` is reused later, do not mount it alongside `00_custom_rules.conf` until duplicate IDs are removed.
 
 ### Mode presets
@@ -43,7 +45,7 @@ All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC
 1. `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf` from `waf/rules/00_custom_rules.conf`
 2. CRS setup and stock CRS rule files (`REQUEST-901+`, `RESPONSE-*`)
 
-With this structure, custom project rules get first pass on the transaction and CRS still runs afterward for anything not already interrupted by a local disruptive action.
+With this structure, custom project rules get first pass on the transaction for scoped tuning and exclusions, and CRS still runs afterward as the primary blocking layer.
 
 Run from `/waf/saesac03_final_SOC/waf`:
 
@@ -153,3 +155,11 @@ If the host only has the legacy standalone binary, replace `docker compose` with
 3. `OPTIONS` preflight requests for the same board paths succeed without WAF 403.
 4. `PUT` or `DELETE` to non-board paths still trigger CRS method enforcement.
 5. If a 403 remains after this change, review `942200` or other contributing rule hits in the same audit record as the next step.
+
+## Search-route false-positive tuning scope
+
+- `GET /api/board/posts`: excludes CRS inspection by attack tag for `ARGS:keyword` and `ARGS:author`.
+- `GET /api/public/announcements`: excludes CRS inspection by attack tag for `ARGS:keyword`.
+- Removed tags are limited to `attack-sqli`, `attack-xss`, `attack-rce`, and `attack-lfi`.
+- `GET /api/public/academic-events` is intentionally not included because the current project scope does not use a search query on that route.
+- This is a precision tradeoff: security-context strings such as `union select`, `/etc/passwd`, or `${jndi:...}` may pass through on the scoped search parameters, while the rest of CRS remains active for other paths and parameters.
