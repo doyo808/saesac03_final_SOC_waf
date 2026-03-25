@@ -14,6 +14,9 @@ services:
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
+      # 1. Nginx 로그 설정 (유지)
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      # GitHub에서 받은 그 파일을 엔진의 오버라이드 경로에 연결
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/modsecurity-override.conf:ro
+
+      # 2. [변경] 파일 직접 매핑 대신 폴더 매핑 사용
+      # 이렇게 하면 컨테이너 스크립트가 파일을 수정하려고 시도하지 않아 에러가 나지 않습니다.
+      - ./rules:/etc/modsecurity.d/owasp-crs/confs:ro
