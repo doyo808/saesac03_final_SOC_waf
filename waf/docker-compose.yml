@@ -17,7 +17,6 @@ services:
       # 1. 로그 설정 (유지)
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
 
-      # 2. [최종 해결] 규칙 폴더 내부로 직접 매핑
-      # 파일명을 그대로 유지하되, 컨테이너 내부의 rules 폴더에 00_ 이름을 붙여 넣습니다.
-      # 이 경로는 스크립트가 수정하지 않으므로 :ro 에러가 나지 않고, 엔진이 자동으로 읽습니다.
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro
+      # 2. [치트키] CRS 메인 설정 파일 위치에 우리 파일을 직접 덮어쓰기
+      # 이 경로는 엔진이 무조건 읽어야만 부팅되는 경로이므로 0이 뜰 수 없습니다.
+      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/confs/crs-setup.conf:ro
