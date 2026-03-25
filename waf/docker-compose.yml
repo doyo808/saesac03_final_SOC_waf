@@ -10,12 +10,15 @@ services:
       - PARANOIA=${PARANOIA:-2}
       - MODSEC_RULE_ENGINE=${MODSEC_RULE_ENGINE:-On}
       - MODSEC_AUDIT_ENGINE=RelevantOnly
-      # [핵심] 920350 규칙을 엔진 로드 시점에 완전히 제거
+      # [핵심] 오타 과탐을 방지하기 위해 920350 규칙을 엔진 로드 시점에 제거
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # Nginx 로그 설정
+      # 1. Nginx 로그 설정 (JSON 형식 로그 출력)
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      # WAF 예외 규칙
+
+      # 2. WAF 예외 규칙 (CRS 실행 전 예외 처리)
       - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf:ro
-      # [수정 부분] 로컬의 custom_rules.conf를 컨테이너 내부의 00-custom_rules.conf로 매핑
+
+      # 3. [가장 중요] 커스텀 규칙 우선순위 강제 적용
+      # 로컬의 custom_rules.conf를 컨테이너 안에서는 '00-'으로 시작하게 매핑하여 CRS보다 먼저 읽히게 함
       - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00-custom_rules.conf:ro
