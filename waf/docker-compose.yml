@@ -14,9 +14,10 @@ services:
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # 1. Nginx 로그 설정 (유지)
+      # 1. 로그 설정 (유지)
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
 
-      # 2. [변경] 파일 직접 매핑 대신 폴더 매핑 사용
-      # 이렇게 하면 컨테이너 스크립트가 파일을 수정하려고 시도하지 않아 에러가 나지 않습니다.
-      - ./rules:/etc/modsecurity.d/owasp-crs/confs:ro
+      # 2. [최종 해결] 규칙 폴더 내부로 직접 매핑
+      # 파일명을 그대로 유지하되, 컨테이너 내부의 rules 폴더에 00_ 이름을 붙여 넣습니다.
+      # 이 경로는 스크립트가 수정하지 않으므로 :ro 에러가 나지 않고, 엔진이 자동으로 읽습니다.
+      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro
