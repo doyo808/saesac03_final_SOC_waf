@@ -13,9 +13,9 @@ services:
       # [핵심] 920350 규칙을 엔진 로드 시점에 완전히 제거
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # Nginx 로그 설정 (Access Log 차단용)
+      # Nginx 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      # WAF 예외 규칙 (Audit Log 차단용)
+      # WAF 예외 규칙
       - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf:ro
-      # 커스텀 규칙 유지
-      - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/custom_rules.conf:ro
+      # [수정 부분] 로컬의 custom_rules.conf를 컨테이너 내부의 00-custom_rules.conf로 매핑
+      - ./rules/custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00-custom_rules.conf:ro
