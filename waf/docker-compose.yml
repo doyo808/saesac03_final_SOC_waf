@@ -16,7 +16,5 @@ services:
     volumes:
       # 1. Nginx 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-
-      # 2. [치트키] 메인 설정 파일이 우리 규칙을 읽도록 경로 강제 매핑
-      # 이 경로는 엔진이 부팅 시 가장 먼저, 무조건 읽는 위치입니다.
+      # 2. 커스텀 룰 강제 주입 (가장 확실한 경로)
       - ./rules/00_custom_rules.conf:/etc/modsecurity.d/modsecurity-override.conf:ro
