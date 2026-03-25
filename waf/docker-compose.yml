@@ -14,7 +14,6 @@ services:
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # 1. Nginx 로그 설정
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      # 2. 커스텀 룰 강제 주입 (가장 확실한 경로)
+      # GitHub에서 받은 그 파일을 엔진의 오버라이드 경로에 연결
       - ./rules/00_custom_rules.conf:/etc/modsecurity.d/modsecurity-override.conf:ro
