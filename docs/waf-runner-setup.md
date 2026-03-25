@@ -24,9 +24,9 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
-Runtime exclusions and pre-CRS overrides should be managed in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`, mounted to `/etc/modsecurity.d/owasp-crs/confs/BEFORE-CRS.conf`.
+Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts that repo file into the container as `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf`, which makes the load order explicit: local project rules first, then the stock CRS `REQUEST-901+` files.
 
-Runtime action overrides that must stay aligned with operator expectations should be kept in `waf/rules/custom_rules.conf`, which is loaded with the CRS rules. This repository now overrides CRS DoS block rules `912120` and `912130` from silent `drop` to explicit `deny,status:403` so blocked requests return an HTTP response instead of surfacing as connection reset or timeout.
+Keep rule IDs unique across `waf/rules/00_custom_rules.conf` and any other local rule files. If the legacy `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` is reused later, do not mount it alongside `00_custom_rules.conf` until duplicate IDs are removed.
 
 ### Mode presets
 
@@ -37,6 +37,13 @@ Preset files are stored under `waf/modes/`:
 - `off.env`: ModSecurity engine off, reverse proxy only
 
 All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC_RULE_ENGINE` changes by mode.
+
+### Effective rule load order
+
+1. `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf` from `waf/rules/00_custom_rules.conf`
+2. CRS setup and stock CRS rule files (`REQUEST-901+`, `RESPONSE-*`)
+
+With this structure, custom project rules get first pass on the transaction and CRS still runs afterward for anything not already interrupted by a local disruptive action.
 
 Run from `/waf/saesac03_final_SOC/waf`:
 
