@@ -7,7 +7,7 @@ This repository uses a self-hosted GitHub Actions runner to deploy WAF changes o
 - Live repository path on WAF server: `/waf/saesac03_final_SOC`
 - Live compose path: `/waf/saesac03_final_SOC/waf`
 
-The workflow resets the live repository to `origin/waf` and applies `docker compose up -d` when the Compose plugin is available. It falls back to `docker-compose up -d` on hosts that still use the standalone binary.
+The workflow resets the live repository to `origin/waf` and applies `docker compose --env-file ./modes/current.env up -d` when the Compose plugin is available. It falls back to `docker-compose --env-file ./modes/current.env up -d` on hosts that still use the standalone binary.
 
 ## ModSecurity runtime settings
 
@@ -37,8 +37,15 @@ Preset files are stored under `waf/modes/`:
 - `block.env`: WAF blocking enabled
 - `detect.env`: DetectionOnly, log without blocking
 - `off.env`: ModSecurity engine off, reverse proxy only
+- `current.env`: active mode file used by the GitHub Actions deployment workflow
 
 All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC_RULE_ENGINE` changes by mode.
+
+`MODSEC_RULE_ENGINE=DetectionOnly` keeps CRS and local rules evaluating and logging, but ModSecurity suppresses disruptive actions in that mode. With `waf/modes/current.env` set to `DetectionOnly`, the stack stays in observe-only mode and does not return WAF blocks for matching requests.
+
+### Active deployment mode
+
+The GitHub Actions workflow now applies `docker compose --env-file ./modes/current.env up -d` on the live host. To switch the deployed mode, update `waf/modes/current.env` to the values you want, or copy the contents from one of the preset files before pushing to the `waf` branch.
 
 ### Effective rule load order
 
@@ -54,6 +61,10 @@ Run from `/waf/saesac03_final_SOC/waf`:
 `docker compose --env-file ./modes/detect.env up -d`
 
 `docker compose --env-file ./modes/off.env up -d`
+
+To mirror the workflow-selected mode locally, run:
+
+`docker compose --env-file ./modes/current.env up -d`
 
 If the host only has the legacy standalone binary, replace `docker compose` with `docker-compose`.
 
@@ -89,7 +100,7 @@ On `git push` to `waf` branch with changes under `waf/**` or `.github/workflows/
 
 1. `git fetch origin waf`
 2. `git reset --hard origin/waf` in `/waf/saesac03_final_SOC`
-3. `docker compose up -d` or `docker-compose up -d`
+3. `docker compose --env-file ./modes/current.env up -d` or `docker-compose --env-file ./modes/current.env up -d`
 4. `docker exec waf nginx -t`
 5. `docker exec waf nginx -s reload` (fallback: `kill -HUP 1`)
 
@@ -139,6 +150,17 @@ Apply sequence:
 3. `docker exec waf nginx -s reload`
 
 If the host only has the legacy standalone binary, replace `docker compose` with `docker-compose`.
+
+## app_guard / App Protect note
+
+This repository does not run F5 WAF for NGINX / NGINX App Protect. The deployed image is `owasp/modsecurity-crs:nginx`, and the current compose file, mounted configs, and local rule files do not declare `app_guard`, `app_protect_enable`, or related App Protect directives.
+
+Because of that, there is no repository-level `app_guard` switch to toggle on or off in the current stack. The nearest equivalent controls are:
+
+- `MODSEC_RULE_ENGINE=DetectionOnly`: inspect and log only, no blocking
+- `MODSEC_RULE_ENGINE=Off`: disable ModSecurity entirely and keep only reverse proxying
+
+If this project later migrates to F5 WAF for NGINX, App Protect enforcement is typically disabled in NGINX config with `app_protect_enable off;` on the target `server` or `location` block, alongside removal or bypass of the related policy references.
 
 ## Board API method exception scope
 

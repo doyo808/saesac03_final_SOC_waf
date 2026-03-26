@@ -18,6 +18,7 @@ jobs:
       LIVE_REPO: /waf/saesac03_final_SOC
       LIVE_WAF_DIR: /waf/saesac03_final_SOC/waf
       BRANCH: waf
+      MODE_ENV_FILE: ./modes/current.env
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,14 +77,19 @@ jobs:
           }
 
           cd "${LIVE_WAF_DIR}"
-          if ! run_compose up -d; then
+          if [ ! -f "${MODE_ENV_FILE}" ]; then
+            echo "Mode env file not found: ${MODE_ENV_FILE}"
+            exit 1
+          fi
+
+          if ! run_compose --env-file "${MODE_ENV_FILE}" up -d; then
             echo "compose up failed, recreating waf container once"
             if [ "${USE_SUDO}" -eq 1 ]; then
               sudo docker rm -f waf || true
             else
               docker rm -f waf || true
             fi
-            run_compose up -d --force-recreate
+            run_compose --env-file "${MODE_ENV_FILE}" up -d --force-recreate
           fi
       - name: Validate nginx config in container
         shell: bash
