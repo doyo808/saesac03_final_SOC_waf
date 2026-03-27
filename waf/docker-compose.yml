@@ -11,11 +11,6 @@ services:
       - MODSEC_RULE_ENGINE=${MODSEC_RULE_ENGINE:-On}
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
-     # 1. Nginx 로그 설정
+    volumes:
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-
-      # 2. [사용자 요구사항 반영] 00_custom_rules.conf를 규칙 폴더에 직접 매핑
-      # 파일명을 그대로 유지하면서 엔진이 자동 스캔하는 폴더에 넣습니다.
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro
-      
       - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf:ro
