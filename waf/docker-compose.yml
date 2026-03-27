@@ -12,10 +12,6 @@ services:
       - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
-      # 1. Nginx 로그 설정
-      - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-
-      # 2. Project custom rules
-      # Mount the repo file under an explicit pre-CRS filename so it is loaded
-      # before REQUEST-901+ CRS rules without relying on local filename quirks.
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf:ro
+  - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
+  - ./rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:ro
+  - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/REQUEST-999-LOCAL-CUSTOM-AFTER-CRS.conf:ro
