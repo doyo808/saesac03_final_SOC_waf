@@ -13,4 +13,4 @@ services:
       - MODSEC_RULE_REMOVE_BY_ID=920350
     volumes:
       - ./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro
-      - ./rules/00_custom_rules.conf:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro
+      - ${CUSTOM_RULES_FILE:-./rules/00_custom_rules.conf}:/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf:ro

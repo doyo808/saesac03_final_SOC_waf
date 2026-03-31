@@ -24,7 +24,7 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
-Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts that repo file into the container as `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf`, which makes the load order explicit: local project rules first, then the stock CRS `REQUEST-901+` files.
+Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts the path in `CUSTOM_RULES_FILE` into `/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf`, so the default tracked rule file and a disabled stub can be swapped without deleting repository files.
 
 This file is now reserved for false-positive tuning and scoped pre-CRS exceptions only. It does not add project-specific phase 2 attack blocking rules; CRS remains the blocking layer after the local tuning rules run.
 
@@ -41,6 +41,8 @@ Preset files are stored under `waf/modes/`:
 
 All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC_RULE_ENGINE` changes by mode.
 
+All mode presets also define `CUSTOM_RULES_FILE=./rules/00_custom_rules.conf` by default. To disable only the project custom rules while keeping CRS active, change that value to `./rules/00_custom_rules.disabled.conf` in `waf/modes/current.env`, then apply compose again.
+
 `MODSEC_RULE_ENGINE=DetectionOnly` keeps CRS and local rules evaluating and logging, but ModSecurity suppresses disruptive actions in that mode. With `waf/modes/current.env` set to `DetectionOnly`, the stack stays in observe-only mode and does not return WAF blocks for matching requests.
 
 ### Active deployment mode
@@ -49,7 +51,7 @@ The GitHub Actions workflow now applies `docker compose --env-file ./modes/curre
 
 ### Effective rule load order
 
-1. `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf` from `waf/rules/00_custom_rules.conf`
+1. `00_custom_rules.conf` from the file selected by `CUSTOM_RULES_FILE`
 2. CRS setup and stock CRS rule files (`REQUEST-901+`, `RESPONSE-*`)
 
 With this structure, custom project rules get first pass on the transaction for scoped tuning and exclusions, and CRS still runs afterward as the primary blocking layer.
@@ -65,6 +67,13 @@ Run from `/waf/saesac03_final_SOC/waf`:
 To mirror the workflow-selected mode locally, run:
 
 `docker compose --env-file ./modes/current.env up -d`
+
+To disable only the project custom rules and keep CRS enabled:
+
+1. Set `CUSTOM_RULES_FILE=./rules/00_custom_rules.disabled.conf` in `waf/modes/current.env`
+2. Run `docker compose --env-file ./modes/current.env up -d`
+3. Run `docker exec waf nginx -t`
+4. Run `docker exec waf nginx -s reload`
 
 If the host only has the legacy standalone binary, replace `docker compose` with `docker-compose`.
 
