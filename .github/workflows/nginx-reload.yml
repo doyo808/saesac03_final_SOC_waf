@@ -82,6 +82,15 @@ jobs:
             exit 1
           fi
 
+          ACTIVE_RULE_DIR="${LIVE_REPO}/runtime/modsecurity.d"
+          ACTIVE_RULE_FILE="${ACTIVE_RULE_DIR}/00_active_custom_rules.conf"
+          DEFAULT_RULE_FILE="${LIVE_WAF_DIR}/rules/00_custom_rules.conf"
+
+          mkdir -p "${ACTIVE_RULE_DIR}"
+          if [ ! -f "${ACTIVE_RULE_FILE}" ]; then
+            cp "${DEFAULT_RULE_FILE}" "${ACTIVE_RULE_FILE}"
+          fi
+
           if ! run_compose --env-file "${MODE_ENV_FILE}" up -d; then
             echo "compose up failed, recreating waf container once"
             if [ "${USE_SUDO}" -eq 1 ]; then
