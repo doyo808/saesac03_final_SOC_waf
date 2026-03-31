@@ -91,59 +91,21 @@ print_status() {
   echo "custom"
 }
 
-container_state() {
-  docker_run inspect -f '{{.State.Status}}' waf 2>/dev/null || echo "missing"
-}
-
-wait_for_running() {
-  local attempts=15
-  local state=""
-
-  while [ "${attempts}" -gt 0 ]; do
-    state="$(container_state)"
-    if [ "${state}" = "running" ]; then
-      return 0
-    fi
-
-    if [ "${state}" = "exited" ] || [ "${state}" = "dead" ]; then
-      break
-    fi
-
-    sleep 1
-    attempts=$((attempts - 1))
-  done
-
-  echo "waf container did not reach running state (current: ${state})" >&2
-  docker_run ps -a --filter name=^waf$
-  return 1
-}
-
 ensure_container() {
-  local state=""
-
   detect_docker
   detect_compose
 
-  if [ ! -f "${MODE_ENV_FILE}" ]; then
-    echo "Mode env file not found: ${MODE_ENV_FILE}" >&2
-    exit 1
-  fi
-
-  state="$(container_state)"
-  if [ "${state}" = "running" ]; then
-    return 0
-  fi
-
-  (
-    cd "${WAF_DIR}"
-    if [ "${state}" = "missing" ]; then
-      compose_run --env-file "${MODE_ENV_FILE}" up -d
-    else
-      compose_run --env-file "${MODE_ENV_FILE}" up -d --force-recreate waf
+  if ! docker_run ps --format '{{.Names}}' | grep -Fxq "waf"; then
+    if [ ! -f "${MODE_ENV_FILE}" ]; then
+      echo "Mode env file not found: ${MODE_ENV_FILE}" >&2
+      exit 1
     fi
-  )
 
-  wait_for_running
+    (
+      cd "${WAF_DIR}"
+      compose_run --env-file "${MODE_ENV_FILE}" up -d
+    )
+  fi
 }
 
 reload_nginx() {
