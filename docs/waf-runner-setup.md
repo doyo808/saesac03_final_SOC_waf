@@ -24,15 +24,7 @@ For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are ap
 
 Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
 
-Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`, but the container no longer mounts that tracked file directly. The compose file mounts `runtime/modsecurity.d/00_active_custom_rules.conf` into `/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf`, and the active runtime file is bootstrapped from `waf/rules/00_custom_rules.conf` if it does not exist yet.
-
-To disable custom rules without deleting tracked files or pulling a different Git state, switch the runtime file instead of editing the repository copy. Use `waf/scripts/set_custom_rules.sh on|off|status` on the live host:
-
-- `on`: copies `waf/rules/00_custom_rules.conf` into `runtime/modsecurity.d/00_active_custom_rules.conf`, then validates and reloads nginx.
-- `off`: copies `waf/rules/00_custom_rules.disabled.conf` into `runtime/modsecurity.d/00_active_custom_rules.conf`, then validates and reloads nginx.
-- `status`: reports whether the active runtime file currently matches the enabled template, the disabled stub, or a custom local override.
-
-This avoids Git-based toggle operations, preserves the tracked rule source in the repo, reloads the running container in place instead of recreating it for every on/off change, and restores the previous active file automatically if `nginx -t` or reload fails.
+Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts that repo file into the container as `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf`, which makes the load order explicit: local project rules first, then the stock CRS `REQUEST-901+` files.
 
 This file is now reserved for false-positive tuning and scoped pre-CRS exceptions only. It does not add project-specific phase 2 attack blocking rules; CRS remains the blocking layer after the local tuning rules run.
 
@@ -57,7 +49,7 @@ The GitHub Actions workflow now applies `docker compose --env-file ./modes/curre
 
 ### Effective rule load order
 
-1. `00_custom_rules.conf` from `runtime/modsecurity.d/00_active_custom_rules.conf`
+1. `REQUEST-899-LOCAL-CUSTOM-BEFORE-CRS.conf` from `waf/rules/00_custom_rules.conf`
 2. CRS setup and stock CRS rule files (`REQUEST-901+`, `RESPONSE-*`)
 
 With this structure, custom project rules get first pass on the transaction for scoped tuning and exclusions, and CRS still runs afterward as the primary blocking layer.
@@ -111,8 +103,6 @@ On `git push` to `waf` branch with changes under `waf/**` or `.github/workflows/
 3. `docker compose --env-file ./modes/current.env up -d` or `docker-compose --env-file ./modes/current.env up -d`
 4. `docker exec waf nginx -t`
 5. `docker exec waf nginx -s reload` (fallback: `kill -HUP 1`)
-
-For manual custom-rule toggling on the live host, prefer `./scripts/set_custom_rules.sh on` or `./scripts/set_custom_rules.sh off` from `/waf/saesac03_final_SOC/waf`. Those commands update only the runtime-mounted active file and reload nginx in place.
 
 ## SOC test traffic policy (DetectionOnly)
 
