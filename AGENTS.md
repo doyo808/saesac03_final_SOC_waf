@@ -5,7 +5,7 @@
 - Main targets:
   - waf/docker-compose.yml
   - waf/config/modsecurity.conf
-  - waf/rules/custom_rules.conf
+  - waf/rules/00_custom_rules.conf
   - .github/workflows/nginx-reload.yml
   - docs/waf-runner-setup.md
 

@@ -1,196 +1,136 @@
-# WAF Runner Setup (No SSH)
+# WAF Runner 설정 및 배포 가이드
 
-This repository uses a self-hosted GitHub Actions runner to deploy WAF changes on push to the `waf` branch.
+이 저장소는 self-hosted GitHub Actions runner를 사용해 `waf` 브랜치 변경사항을 실서버 WAF에 반영합니다. SSH 접속 대신 GitHub Actions와 로컬 Docker 권한만으로 배포가 끝나도록 구성되어 있습니다.
 
-## Live path
+## 1. 운영 경로
 
-- Live repository path on WAF server: `/waf/saesac03_final_SOC`
-- Live compose path: `/waf/saesac03_final_SOC/waf`
+- 실서버 저장소 경로: `/waf/saesac03_final_SOC`
+- 실서버 compose 작업 경로: `/waf/saesac03_final_SOC/waf`
+- 배포 워크플로 파일: `.github/workflows/nginx-reload.yml`
 
-The workflow resets the live repository to `origin/waf` and applies `docker compose --env-file ./modes/current.env up -d` when the Compose plugin is available. It falls back to `docker-compose --env-file ./modes/current.env up -d` on hosts that still use the standalone binary.
+실서버 워크플로는 운영 저장소를 `origin/waf`와 동일한 상태로 맞춘 뒤, `waf/modes/current.env`를 기준으로 compose를 다시 적용합니다.
 
-## ModSecurity runtime settings
+## 2. 배포 흐름
 
-For the `owasp/modsecurity-crs:nginx` image, runtime ModSecurity settings are applied with `MODSEC_*` environment variables in `waf/docker-compose.yml`.
+`waf` 브랜치에 push가 들어오고 변경 범위가 `waf/**` 또는 `.github/workflows/nginx-reload.yml`에 포함되면 워크플로가 다음 순서로 실행됩니다.
 
-- `PARANOIA=2` by default
-- `MODSEC_RULE_ENGINE=On` by default
-- `MODSEC_REQ_BODY_ACCESS=On`
-- `MODSEC_RESP_BODY_ACCESS=Off`
-- `MODSEC_AUDIT_ENGINE=RelevantOnly`
-- `MODSEC_AUDIT_LOG_FORMAT=JSON`
+1. 실서버 저장소에서 `git fetch origin waf`
+2. `/waf/saesac03_final_SOC`에서 `git reset --hard origin/waf`
+3. `/waf/saesac03_final_SOC/waf`로 이동
+4. `docker compose --env-file ./modes/current.env up -d` 실행
+5. compose 플러그인이 없으면 `docker-compose --env-file ./modes/current.env up -d`로 fallback
+6. 최초 `compose up` 실패 시 `waf` 컨테이너를 한 번만 재생성한 뒤 `--force-recreate`로 재시도
+7. `docker exec waf nginx -t`
+8. `docker exec waf nginx -s reload`
+9. reload 실패 시 `kill -HUP 1`로 한 번 더 적용
+10. 마지막에 `docker ps`, `docker logs --tail 30 waf`로 상태 확인
 
-`waf/docker-compose.yml` now reads `PARANOIA` and `MODSEC_RULE_ENGINE` from environment variables, so `docker compose --env-file ./modes/<mode>.env up -d` applies the selected mode correctly. When no env file is supplied, the default runtime remains blocking mode with `PARANOIA=2`.
+## 3. Runner 요구사항
 
-Do not bind-mount `waf/config/modsecurity.conf` into `/etc/modsecurity.d/modsecurity.conf` on the live container. This image family is designed to tune ModSecurity through environment variables and rule mounts, and direct replacement of the base ModSecurity config has caused container restart loops in this project before.
+1. Runner는 Docker가 설치된 동일 서버에서 동작해야 합니다.
+2. Runner 라벨에 `waf`가 포함되어야 합니다.
+3. Runner 계정은 Docker 명령을 직접 실행하거나 `sudo`로 실행할 수 있어야 합니다.
 
-Project-specific pre-CRS rules live in `waf/rules/00_custom_rules.conf`. The compose file mounts the path in `CUSTOM_RULES_FILE` into `/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf`, so the default tracked rule file and a disabled stub can be swapped without deleting repository files.
+## 4. Docker 권한 구성
 
-This file is now reserved for false-positive tuning and scoped pre-CRS exceptions only. It does not add project-specific phase 2 attack blocking rules; CRS remains the blocking layer after the local tuning rules run.
+선택지는 둘 중 하나면 충분합니다.
 
-Keep rule IDs unique across `waf/rules/00_custom_rules.conf` and any other local rule files. If the legacy `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` is reused later, do not mount it alongside `00_custom_rules.conf` until duplicate IDs are removed.
+- 방법 A: runner 사용자를 `docker` 그룹에 추가
+- 방법 B: `sudo docker ...` 실행이 가능하도록 sudoers에 `NOPASSWD` 허용
 
-### Mode presets
+워크플로는 먼저 일반 Docker 권한을 시도하고, 실패하면 `sudo docker` 경로를 자동으로 검사합니다.
 
-Preset files are stored under `waf/modes/`:
+## 5. 런타임 설정 기준
 
-- `block.env`: WAF blocking enabled
-- `detect.env`: DetectionOnly, log without blocking
-- `off.env`: ModSecurity engine off, reverse proxy only
-- `current.env`: active mode file used by the GitHub Actions deployment workflow
+이 프로젝트는 `owasp/modsecurity-crs:nginx` 이미지를 사용하며, 런타임 설정은 `waf/docker-compose.yml`과 `waf/modes/*.env`에서 관리합니다.
 
-All three presets keep `PARANOIA=2` for consistent CRS sensitivity; only `MODSEC_RULE_ENGINE` changes by mode.
+- 기본 민감도: `PARANOIA=2`
+- 기본 차단 모드: `MODSEC_RULE_ENGINE=On`
+- 감사 로그: `MODSEC_AUDIT_ENGINE=RelevantOnly`
+- 감사 로그 포맷: `MODSEC_AUDIT_LOG_FORMAT=JSON`
+- 숫자형 Host 검사 예외: `MODSEC_RULE_REMOVE_BY_ID=920350`
 
-All mode presets also define `CUSTOM_RULES_FILE=./rules/00_custom_rules.conf` by default. To disable only the project custom rules while keeping CRS active, change that value to `./rules/00_custom_rules.disabled.conf` in `waf/modes/current.env`, then apply compose again.
+`waf/config/modsecurity.conf`는 운영값을 설명하기 위한 기준 파일입니다. 이 파일을 실컨테이너 `/etc/modsecurity.d/modsecurity.conf`에 직접 bind mount 하지 않는 것을 권장합니다.
 
-`MODSEC_RULE_ENGINE=DetectionOnly` keeps CRS and local rules evaluating and logging, but ModSecurity suppresses disruptive actions in that mode. With `waf/modes/current.env` set to `DetectionOnly`, the stack stays in observe-only mode and does not return WAF blocks for matching requests.
+## 6. 모드 파일 운영 방식
 
-### Active deployment mode
+`waf/modes/` 디렉터리에는 네 가지 파일이 있습니다.
 
-The GitHub Actions workflow now applies `docker compose --env-file ./modes/current.env up -d` on the live host. To switch the deployed mode, update `waf/modes/current.env` to the values you want, or copy the contents from one of the preset files before pushing to the `waf` branch.
+- `block.env`: 차단 모드
+- `detect.env`: DetectionOnly 모드
+- `off.env`: ModSecurity 비활성화 모드
+- `current.env`: 배포 워크플로가 실제로 읽는 활성 모드
 
-### Effective rule load order
+모든 preset은 `PARANOIA=2`를 유지하고, 차이는 `MODSEC_RULE_ENGINE` 값에만 둡니다.
 
-1. `00_custom_rules.conf` from the file selected by `CUSTOM_RULES_FILE`
-2. CRS setup and stock CRS rule files (`REQUEST-901+`, `RESPONSE-*`)
-
-With this structure, custom project rules get first pass on the transaction for scoped tuning and exclusions, and CRS still runs afterward as the primary blocking layer.
-
-Run from `/waf/saesac03_final_SOC/waf`:
-
-`docker compose --env-file ./modes/block.env up -d`
-
-`docker compose --env-file ./modes/detect.env up -d`
-
-`docker compose --env-file ./modes/off.env up -d`
-
-To mirror the workflow-selected mode locally, run:
-
-`docker compose --env-file ./modes/current.env up -d`
-
-To disable only the project custom rules and keep CRS enabled:
-
-1. Set `CUSTOM_RULES_FILE=./rules/00_custom_rules.disabled.conf` in `waf/modes/current.env`
-2. Run `docker compose --env-file ./modes/current.env up -d`
-3. Run `docker exec waf nginx -t`
-4. Run `docker exec waf nginx -s reload`
-
-If the host only has the legacy standalone binary, replace `docker compose` with `docker-compose`.
-
-After mode changes, validate and reload:
-
-`docker exec waf nginx -t`
-
-`docker exec waf nginx -s reload`
-
-## Runner requirements
-
-1. Runner must be installed on the same server that runs Docker WAF.
-2. Runner must have the `waf` label (workflow uses `runs-on: [self-hosted, waf]`).
-3. Runner account must be able to run Docker commands.
-
-## Docker permission options
-
-Option A: Add runner user to the docker group.
+로컬에서 직접 실행할 때 예시는 다음과 같습니다.
 
 ```bash
-sudo usermod -aG docker <runner_user>
+docker compose --env-file ./modes/block.env up -d
+docker compose --env-file ./modes/detect.env up -d
+docker compose --env-file ./modes/off.env up -d
+docker compose --env-file ./modes/current.env up -d
 ```
 
-After this, re-login or restart the runner service.
+호스트에 compose 플러그인이 없으면 `docker-compose`로 바꿔 실행합니다.
 
-Option B: Allow Docker via sudoers (NOPASSWD).
+## 7. 커스텀 룰 on/off
 
-Create `/etc/sudoers.d/runner-docker` and allow Docker commands for the runner user.
+프로젝트 전용 false positive 완화 룰은 `waf/rules/00_custom_rules.conf`에 있습니다. compose는 `CUSTOM_RULES_FILE` 값을 통해 이 파일을 `/etc/modsecurity.d/owasp-crs/rules/00_custom_rules.conf`로 mount 합니다.
 
-## Deployment flow
+- 기본값: `CUSTOM_RULES_FILE=./rules/00_custom_rules.conf`
+- 커스텀 룰 비활성화: `CUSTOM_RULES_FILE=./rules/00_custom_rules.disabled.conf`
 
-On `git push` to `waf` branch with changes under `waf/**` or `.github/workflows/nginx-reload.yml`, the workflow does:
+즉, CRS는 유지한 채 프로젝트 룰만 끄고 싶다면 `waf/modes/current.env`의 `CUSTOM_RULES_FILE` 값을 disabled stub로 바꾸면 됩니다.
 
-1. `git fetch origin waf`
-2. `git reset --hard origin/waf` in `/waf/saesac03_final_SOC`
-3. `docker compose --env-file ./modes/current.env up -d` or `docker-compose --env-file ./modes/current.env up -d`
-4. `docker exec waf nginx -t`
-5. `docker exec waf nginx -s reload` (fallback: `kill -HUP 1`)
+## 8. 룰 로드 순서
 
-## SOC test traffic policy (DetectionOnly)
+1. `CUSTOM_RULES_FILE`이 가리키는 `00_custom_rules.conf`
+2. OWASP CRS 기본 rule set
 
-Use scoped test traffic so SOC logs are generated continuously without weakening production blocking.
+이 구조의 목적은 프로젝트별 허용 예외와 오탐 완화를 먼저 반영하고, 실제 공격 차단은 CRS가 담당하게 하는 것입니다.
 
-1. Keep global blocking mode enabled: `SecRuleEngine On`.
-2. Match all three test conditions in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf`:
-   - Default tester source IP `127.0.0.1` (`REMOTE_ADDR`)
-   - Dedicated header `X-SOC-Test: CHANGE_ME_SECRET`
-   - Dedicated path `/soc-log-test`
-3. Apply only to matched traffic: `ctl:ruleEngine=DetectionOnly`, `ctl:auditEngine=On`.
-4. Keep exceptions narrow: one approved tester host, WAF ports 80/443 only.
-5. If you need a remote tester instead of local loopback, replace the source IP in `waf/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf` before deployment.
+## 9. 주요 커스텀 룰 범위
 
-### Verification checklist
+- `1001000-1001002`: 게시판 API 메서드 예외
+- `1002000-1002002`: 검색 파라미터 오탐 완화
+- `1003000-1003002`: 공개 문의 JSON 필드 오탐 완화
+- `1004000-1004004`: 게시판, LMS, 인증 관련 본문 필드 오탐 완화
+- `1005000-1005003`: 알려진 오타 경로 및 Referer 허용
 
-1. Push to the `waf` branch and confirm workflow success.
-2. Send repetitive requests that match `/soc-log-test` and include the `X-SOC-Test` header.
-3. Confirm WAF audit logs are created while ModSecurity does not block matched test traffic.
-4. Confirm non-test traffic still uses normal blocking behavior.
+이 파일은 공격 탐지 강화용 로컬 차단 룰 모음이 아니라, 서비스 경로와 입력 특성에 맞춘 예외와 튜닝 파일입니다.
 
-## SOC test log generator script
+## 10. 적용 후 점검 순서
 
-Script path: `waf/scripts/generate_soc_test_traffic.py`
+로컬 적용이든 배포 직후든 최소한 아래 순서는 유지하는 것이 안전합니다.
 
-Example:
-
-`python3 waf/scripts/generate_soc_test_traffic.py --secret CHANGE_ME_SECRET --url http://127.0.0.1/soc-log-test --interval 0.5`
-
-Notes:
-
-- Set `--fixed-ip` if you need a constant `X-Forwarded-For` value in the generated requests.
-- Omit `--fixed-ip` to rotate or randomize the forwarded IP values.
-
-## Nginx JSON access log persistence
-
-- Managed file: `waf/config/99-soc-json-log.conf`
-- Compose mount: `./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro`
-- Duplicate prevention: `access_log off;` is set before `access_log /var/log/nginx/access.log soc_json;`
-
-Apply sequence:
-
-1. `docker compose up -d`
+1. `docker compose --env-file ./modes/current.env up -d`
 2. `docker exec waf nginx -t`
 3. `docker exec waf nginx -s reload`
 
-If the host only has the legacy standalone binary, replace `docker compose` with `docker-compose`.
+## 11. SOC 테스트 트래픽 생성
 
-## app_guard / App Protect note
+스크립트 경로는 `waf/scripts/generate_soc_test_traffic.py`입니다.
 
-This repository does not run F5 WAF for NGINX / NGINX App Protect. The deployed image is `owasp/modsecurity-crs:nginx`, and the current compose file, mounted configs, and local rule files do not declare `app_guard`, `app_protect_enable`, or related App Protect directives.
+예시:
 
-Because of that, there is no repository-level `app_guard` switch to toggle on or off in the current stack. The nearest equivalent controls are:
+```bash
+python3 waf/scripts/generate_soc_test_traffic.py --secret CHANGE_ME_SECRET --url http://127.0.0.1/soc-log-test --interval 0.5
+```
 
-- `MODSEC_RULE_ENGINE=DetectionOnly`: inspect and log only, no blocking
-- `MODSEC_RULE_ENGINE=Off`: disable ModSecurity entirely and keep only reverse proxying
+주요 옵션:
 
-If this project later migrates to F5 WAF for NGINX, App Protect enforcement is typically disabled in NGINX config with `app_protect_enable off;` on the target `server` or `location` block, alongside removal or bypass of the related policy references.
+- `--scenario-filter`: 특정 그룹 또는 시나리오만 실행
+- `--fixed-ip`: 고정 `X-Forwarded-For` 사용
+- `--xff-list`: 순환 IP 목록 지정
+- `--random-xff`: 무작위 사설 IP 사용
+- `--result-file`: 결과 JSONL 파일명 변경
+- `--insecure`: HTTPS 테스트 시 인증서 검증 생략
 
-## Board API method exception scope
+## 12. JSON 액세스 로그
 
-- Scope is limited to `Host: kj.ac.kr` so the CRS method policy stays unchanged for other virtual hosts.
-- PUT and DELETE are allowed only for `/api/board/posts/[id]` and `/api/board/posts/[postId]/comments/[commentId]`.
-- OPTIONS is kept explicit for `/api/board/posts/*` preflight requests.
-- Applied rule IDs: `990130`, `990131`, `990132`.
-- These pre-CRS rules expand `tx.allowed_methods` for the scoped board paths, which prevents rule `911100` from raising anomaly score and avoids the follow-on `949110` 403 for normal board edit/delete traffic.
+JSON 액세스 로그 설정은 `waf/config/99-soc-json-log.conf`에서 관리합니다.
 
-### Board API verification checklist
-
-1. `PUT /api/board/posts/145` on `Host: kj.ac.kr` reaches the application and no longer logs rule `911100`.
-2. `DELETE /api/board/posts/145/comments/10` on `Host: kj.ac.kr` reaches the application and no longer logs rule `911100`.
-3. `OPTIONS` preflight requests for the same board paths succeed without WAF 403.
-4. `PUT` or `DELETE` to non-board paths still trigger CRS method enforcement.
-5. If a 403 remains after this change, review `942200` or other contributing rule hits in the same audit record as the next step.
-
-## Search-route false-positive tuning scope
-
-- `GET /api/board/posts`: excludes CRS inspection by attack tag for `ARGS:keyword` and `ARGS:author`.
-- `GET /api/public/announcements`: excludes CRS inspection by attack tag for `ARGS:keyword`.
-- Removed tags are limited to `attack-sqli`, `attack-xss`, `attack-rce`, and `attack-lfi`.
-- `GET /api/public/academic-events` is intentionally not included because the current project scope does not use a search query on that route.
-- This is a precision tradeoff: security-context strings such as `union select`, `/etc/passwd`, or `${jndi:...}` may pass through on the scoped search parameters, while the rest of CRS remains active for other paths and parameters.
+- mount 경로: `./config/99-soc-json-log.conf:/etc/nginx/conf.d/99-soc-json-log.conf:ro`
+- 중복 방지: `access_log off;` 후 필요한 출력만 다시 선언
+- 목적: 표준 access log를 JSON 형식으로 남기고, 반복되는 오타 경로 잡음을 줄여 분석 품질을 높이는 것
